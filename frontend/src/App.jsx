@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { isMiniPay, getAccount, getAllBalances, sendToken, sendNative, waitForTx, onAccountChange } from './lib/celo';
 import './index.css';
 
 const API_URL = '/api/chat';
+const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
 const QUICK_ACTIONS = [
   { label: '💰 Check balance', msg: 'What\'s my balance?' },
@@ -11,19 +13,18 @@ const QUICK_ACTIONS = [
 ];
 
 function MessageBubble({ message }) {
-  const isUser = message.role === 'user';
   return (
     <div className={`message ${message.role}`}>
-      {!isUser && message.content === '...' ? (
+      {message.content === '...' ? (
         <div className="typing">
           <span></span><span></span><span></span>
         </div>
       ) : (
         <>
-          <div>{message.content}</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
           {message.tx && <TransactionCard tx={message.tx} />}
           {message.action === 'minipay' && (
-            <button className="minipay-btn" style={{ marginTop: 8 }}>
+            <button className="minipay-btn" style={{ marginTop: 8 }} onClick={message.onPay}>
               🟡 Pay with MiniPay
             </button>
           )}
@@ -37,17 +38,20 @@ function TransactionCard({ tx }) {
   return (
     <div className="tx-card">
       <div className="tx-card-header">
-        <span className="tx-amount">{tx.amount} cUSD</span>
+        <span className="tx-amount">{tx.amount} USDm</span>
         <span className="tx-status">{tx.status || 'Confirmed'}</span>
       </div>
-      <div className="tx-detail">
-        <span>To: {tx.to?.slice(0, 6)}...{tx.to?.slice(-4)}</span>
-        <span>{tx.category}</span>
-      </div>
+      {tx.to && (
+        <div className="tx-detail">
+          <span>To: {tx.to.slice(0, 6)}...{tx.to.slice(-4)}</span>
+          <span>{tx.category || ''}</span>
+        </div>
+      )}
       {tx.hash && (
         <div className="tx-detail">
-          <span>TX: {tx.hash.slice(0, 10)}...</span>
-          <span>{new Date(tx.timestamp * 1000).toLocaleTimeString()}</span>
+          <a href={`https://celoscan.io/tx/${tx.hash}`} target="_blank" rel="noopener" style={{ color: '#10B981' }}>
+            View on Celoscan ↗
+          </a>
         </div>
       )}
     </div>
@@ -58,7 +62,9 @@ export default function App() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hey! I'm MiniMate, your AI finance assistant on Celo. 🤖\n\nI can help you:\n• Check balances & spending\n• Send payments\n• Create savings goals\n• Analyze your finances\n\nWhat would you like to do?",
+      content: isMiniPay()
+        ? "Hey! I'm MiniMate, your AI finance assistant on Celo. 🤖\n\nI can help you:\n• Check balances & spending\n• Send payments\n• Create savings goals\n• Analyze your finances\n\nWhat would you like to do?"
+        : "Hey! I'm MiniMate. 👋\n\nFor the best experience, open this app in MiniPay.\n\nYou can still explore in view-only mode. What would you like to do?",
     },
   ]);
   const [input, setInput] = useState('');
@@ -70,6 +76,38 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-connect if MiniPay
+  useEffect(() => {
+    async function connect() {
+      if (isMiniPay()) {
+        const addr = await getAccount();
+        if (addr) {
+          setWallet({ address: addr });
+          const balances = await getAllBalances(addr);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: `✅ Connected!\n\n💰 **Your Balances:**\n• Native CELO: ${parseFloat(balances.native.formatted).toFixed(4)}\n• USDm: ${parseFloat(balances.usdm.formatted).toFixed(2)}\n• USDC: ${parseFloat(balances.usdc.formatted).toFixed(2)}\n• USDT: ${parseFloat(balances.usdt.formatted).toFixed(2)}`,
+            },
+          ]);
+        }
+      }
+    }
+    connect();
+  }, []);
+
+  // Listen for account changes
+  useEffect(() => {
+    onAccountChange((addr) => {
+      if (addr) {
+        setWallet({ address: addr });
+      } else {
+        setWallet(null);
+      }
+    });
+  }, []);
+
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
 
@@ -77,8 +115,6 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
-
-    // Add typing indicator
     setMessages((prev) => [...prev, { role: 'assistant', content: '...' }]);
 
     try {
@@ -93,16 +129,16 @@ export default function App() {
 
       const data = await res.json();
 
-      // Remove typing indicator, add real response
       setMessages((prev) => {
-        const withoutTyping = prev.filter((m) => m.content !== '...');
+        const clean = prev.filter((m) => m.content !== '...');
         return [
-          ...withoutTyping,
+          ...clean,
           {
             role: 'assistant',
             content: data.message,
             tx: data.tx,
             action: data.action,
+            onPay: data.action === 'minipay' ? () => executePayment(data.tx) : undefined,
           },
         ];
       });
@@ -110,18 +146,44 @@ export default function App() {
       if (data.wallet) setWallet(data.wallet);
     } catch (err) {
       setMessages((prev) => {
-        const withoutTyping = prev.filter((m) => m.content !== '...');
-        return [
-          ...withoutTyping,
-          {
-            role: 'assistant',
-            content: "Sorry, something went wrong. Please try again.",
-          },
-        ];
+        const clean = prev.filter((m) => m.content !== '...');
+        return [...clean, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }];
       });
     }
 
     setLoading(false);
+  };
+
+  const executePayment = async (tx) => {
+    if (!tx || !tx.to || !tx.amount) return;
+
+    setMessages((prev) => [...prev, { role: 'assistant', content: '...' }]);
+
+    try {
+      let hash;
+      if (tx.token === 'celo') {
+        hash = await sendNative(tx.to, tx.amount);
+      } else {
+        hash = await sendToken(USDm, tx.to, tx.amount);
+      }
+
+      setMessages((prev) => {
+        const clean = prev.filter((m) => m.content !== '...');
+        return [
+          ...clean,
+          {
+            role: 'assistant',
+            content: `✅ **Payment Sent!**\n\n• Amount: ${tx.amount} ${tx.token || 'USDm'}\n• To: ${tx.to.slice(0, 8)}...\n• TX: ${hash.slice(0, 16)}...`,
+            tx: { ...tx, hash, status: 'Confirmed' },
+          },
+        ];
+      });
+    } catch (err) {
+      setMessages((prev) => {
+        const clean = prev.filter((m) => m.content !== '...');
+        return [...clean, { role: 'assistant', content: `❌ Payment failed: ${err.message}` }];
+      });
+    }
   };
 
   const handleSubmit = (e) => {
@@ -131,12 +193,11 @@ export default function App() {
 
   return (
     <div className="chat-container">
-      {/* Header */}
       <div className="header">
         <div className="header-icon">🤖</div>
         <div className="header-info">
           <h1>MiniMate</h1>
-          <p>AI Finance Assistant on Celo</p>
+          <p>AI Finance on Celo {isMiniPay() ? '(MiniPay)' : ''}</p>
         </div>
         {wallet ? (
           <div className="wallet-badge">
@@ -144,17 +205,12 @@ export default function App() {
             {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
           </div>
         ) : (
-          <button
-            className="quick-btn"
-            onClick={() => sendMessage('Connect my wallet')}
-            style={{ marginLeft: 'auto' }}
-          >
-            Connect Wallet
+          <button className="quick-btn" onClick={() => sendMessage('Connect my wallet')} style={{ marginLeft: 'auto' }}>
+            Connect
           </button>
         )}
       </div>
 
-      {/* Messages */}
       <div className="messages">
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} />
@@ -162,21 +218,14 @@ export default function App() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick actions */}
       <div className="quick-actions">
         {QUICK_ACTIONS.map((action, i) => (
-          <button
-            key={i}
-            className="quick-btn"
-            onClick={() => sendMessage(action.msg)}
-            disabled={loading}
-          >
+          <button key={i} className="quick-btn" onClick={() => sendMessage(action.msg)} disabled={loading}>
             {action.label}
           </button>
         ))}
       </div>
 
-      {/* Input */}
       <form className="input-container" onSubmit={handleSubmit}>
         <div className="input-wrapper">
           <input
