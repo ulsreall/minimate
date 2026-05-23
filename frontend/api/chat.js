@@ -35,7 +35,7 @@ async function executeAction(action, params, walletAddress) {
   try {
     switch (action) {
       case 'check_balance': {
-        const address = params.address || walletAddress;
+        const address = (params.address || walletAddress)?.toLowerCase();
         if (!address) {
           return { message: "Please connect your wallet first, or tell me your address." };
         }
