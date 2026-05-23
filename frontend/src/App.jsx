@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { isMiniPay, isFarcaster, getAccount, getAllBalances, sendToken, sendNative, waitForTx, onAccountChange } from './lib/celo';
-import { sdk } from '@farcaster/miniapp-sdk';
+import {
+  detectEnvironment,
+  isMiniPay,
+  isFarcaster,
+  getAccount,
+  getAllBalances,
+  sendToken,
+  sendNative,
+  waitForTx,
+  onAccountChange,
+  signalFarcasterReady,
+} from './lib/celo';
 import './index.css';
 
 const API_URL = 'https://minimate-green.vercel.app/api/chat';
@@ -61,14 +71,14 @@ function TransactionCard({ tx }) {
 
 function BalanceCards({ balances }) {
   if (!balances) return null;
-  
+
   const tokens = [
     { name: 'CELO', value: balances.native?.formatted },
     { name: 'USDm', value: balances.usdm?.formatted },
     { name: 'USDC', value: balances.usdc?.formatted },
     { name: 'USDT', value: balances.usdt?.formatted },
   ];
-  
+
   return (
     <div className="balance-grid">
       {tokens.map(token => (
@@ -88,56 +98,60 @@ export default function App() {
   const [wallet, setWallet] = useState(null);
   const [balances, setBalances] = useState(null);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [env, setEnv] = useState(null); // 'farcaster' | 'minipay' | 'browser'
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Signal ready to Farcaster Mini App SDK (hides splash screen)
+  // Initialize: detect environment + auto-connect
   useEffect(() => {
-    async function initFarcaster() {
+    async function init() {
       try {
-        const isFarcaster = await sdk.isInMiniApp();
-        if (isFarcaster) {
-          await sdk.actions.ready();
-          console.log('[MiniMate] Farcaster Mini App ready');
+        // 1. Detect environment
+        const environment = await detectEnvironment();
+        setEnv(environment);
+
+        // 2. Signal Farcaster ready (hides splash)
+        if (environment === 'farcaster') {
+          await signalFarcasterReady();
+        }
+
+        // 3. Auto-connect if MiniPay or Farcaster
+        if (environment === 'farcaster' || environment === 'minipay') {
+          const addr = await getAccount();
+          if (addr) {
+            setWallet({ address: addr });
+            try {
+              const bal = await getAllBalances(addr);
+              setBalances(bal);
+            } catch (e) {
+              console.warn('[MiniMate] Failed to load balances:', e.message);
+            }
+            setShowWelcome(false);
+            setMessages([{
+              role: 'assistant',
+              content: `✅ Connected!\n\nI'm MiniMate, your AI finance assistant on Celo. 🤖\n\nWhat would you like to do?`,
+            }]);
+          }
         }
       } catch (e) {
-        // Not in Farcaster context — ignore
+        console.error('[MiniMate] Init error:', e);
       }
     }
-    initFarcaster();
+    init();
   }, []);
 
-  // Auto-connect if MiniPay or Farcaster
-  useEffect(() => {
-    async function connect() {
-      const inFarcaster = await isFarcaster();
-      if (isMiniPay() || inFarcaster) {
-        const addr = await getAccount();
-        if (addr) {
-          setWallet({ address: addr });
-          const bal = await getAllBalances(addr);
-          setBalances(bal);
-          setShowWelcome(false);
-          setMessages([{
-            role: 'assistant',
-            content: `✅ Connected!\n\nI'm MiniMate, your AI finance assistant on Celo. 🤖\n\nWhat would you like to do?`,
-          }]);
-        }
-      }
-    }
-    connect();
-  }, []);
-
-  // Listen for account changes
+  // Listen for account changes (MiniPay)
   useEffect(() => {
     onAccountChange(async (addr) => {
       if (addr) {
         setWallet({ address: addr });
-        const bal = await getAllBalances(addr);
-        setBalances(bal);
+        try {
+          const bal = await getAllBalances(addr);
+          setBalances(bal);
+        } catch {}
       } else {
         setWallet(null);
         setBalances(null);
@@ -166,6 +180,10 @@ export default function App() {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`);
+      }
+
       const data = await res.json();
 
       setMessages((prev) => {
@@ -184,6 +202,7 @@ export default function App() {
 
       if (data.wallet) setWallet(data.wallet);
     } catch (err) {
+      console.error('[MiniMate] Send message error:', err);
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
         return [...clean, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }];
@@ -218,6 +237,7 @@ export default function App() {
         ];
       });
     } catch (err) {
+      console.error('[MiniMate] Payment error:', err);
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
         return [...clean, { role: 'assistant', content: `❌ Payment failed: ${err.message}` }];
@@ -225,10 +245,33 @@ export default function App() {
     }
   };
 
+  const handleManualConnect = async () => {
+    try {
+      const addr = await getAccount();
+      if (addr) {
+        setWallet({ address: addr });
+        const bal = await getAllBalances(addr);
+        setBalances(bal);
+        setShowWelcome(false);
+        setMessages([{
+          role: 'assistant',
+          content: `✅ Connected!\n\nI'm MiniMate, your AI finance assistant on Celo. 🤖\n\nWhat would you like to do?`,
+        }]);
+      }
+    } catch (err) {
+      setMessages([{
+        role: 'assistant',
+        content: `❌ Could not connect wallet: ${err.message}`,
+      }]);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     sendMessage(input);
   };
+
+  const envLabel = env === 'farcaster' ? 'Farcaster' : env === 'minipay' ? 'MiniPay' : '';
 
   return (
     <div className="chat-container">
@@ -238,7 +281,7 @@ export default function App() {
         </div>
         <div className="header-info">
           <h1>MiniMate</h1>
-          <p>AI Finance on Celo {isMiniPay() ? '(MiniPay)' : ''}</p>
+          <p>AI Finance on Celo {envLabel ? `(${envLabel})` : ''}</p>
         </div>
         {wallet ? (
           <div className="wallet-badge">
@@ -246,7 +289,7 @@ export default function App() {
             {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
           </div>
         ) : (
-          <button className="quick-btn" onClick={() => sendMessage('Connect my wallet')} style={{ marginLeft: 'auto' }}>
+          <button className="quick-btn" onClick={handleManualConnect} style={{ marginLeft: 'auto' }}>
             Connect
           </button>
         )}
@@ -296,7 +339,7 @@ export default function App() {
             </div>
           </div>
         ) : null}
-        
+
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} />
         ))}
