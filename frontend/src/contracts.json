@@ -1,7 +1,7 @@
 {
   "network": "celo",
   "chainId": 42220,
-  "MiniMateVault": "0xdd2C761D010c205CC61Ef5931Dde8AB54F00f788",
-  "MiniMateRouter": "0xfC7367Ab2E82fE46Fa5A8543E6582800Eeb765B7",
-  "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+  "MiniMateVault": "0x8d8527F7F8c1D8Ef231007677e663948393bF9B7",
+  "MiniMateRouter": "0xc891546024Dcd2fE3CD2Fc6cEFdB30cBd27e5b61",
+  "token": "native"
 }
