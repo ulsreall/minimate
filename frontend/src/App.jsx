@@ -17,10 +17,10 @@ const API_URL = '/api/chat';
 const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
 const QUICK_ACTIONS = [
-  { label: '💰 Check balance', msg: "What's my balance?" },
-  { label: '📊 Spending summary', msg: 'Show my spending this month' },
-  { label: '🎯 Create savings goal', msg: 'I want to create a savings goal' },
-  { label: '💸 Send payment', msg: 'I want to send a payment' },
+  { icon: '💰', label: 'Balance', sub: 'View tokens', msg: "What's my balance?" },
+  { icon: '📊', label: 'Spending', sub: 'This month', msg: 'Show my spending this month' },
+  { icon: '🎯', label: 'Set Goal', sub: 'Save up', msg: 'I want to create a savings goal' },
+  { icon: '💸', label: 'Send', sub: 'Transfer CELO', msg: 'I want to send a payment' },
 ];
 
 function MessageBubble({ message }) {
@@ -358,7 +358,11 @@ export default function App() {
       <div className="quick-actions">
         {QUICK_ACTIONS.map((action, i) => (
           <button key={i} className="quick-btn" onClick={() => sendMessage(action.msg)} disabled={loading}>
-            {action.label}
+            <span className="quick-icon">{action.icon}</span>
+            <span className="quick-text">
+              <span className="quick-label">{action.label}</span>
+              <span className="quick-sub">{action.sub}</span>
+            </span>
           </button>
         ))}
       </div>
