@@ -88,7 +88,15 @@ export async function getAccount() {
       method: 'eth_requestAccounts',
       params: [],
     });
-    return accounts[0] || null;
+    const addr = accounts[0];
+    if (!addr) return null;
+    // Normalize: lowercase and ensure valid 0x + 40 hex chars
+    const normalized = addr.toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(normalized)) {
+      console.error('[MiniMate] Invalid address from provider:', addr);
+      return null;
+    }
+    return normalized;
   } catch (err) {
     console.error('[MiniMate] Failed to get account:', err);
     return null;

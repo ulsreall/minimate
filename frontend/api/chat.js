@@ -35,7 +35,11 @@ async function executeAction(action, params, walletAddress) {
   try {
     switch (action) {
       case 'check_balance': {
-        const address = (params.address || walletAddress)?.toLowerCase();
+        let address = (params.address || walletAddress)?.toLowerCase();
+        // Validate address format (must be 0x + 40 hex chars)
+        if (address && !/^0x[0-9a-f]{40}$/.test(address)) {
+          return { message: "⚠️ Invalid wallet address format. Please check your wallet connection." };
+        }
         if (!address) {
           return { message: "Please connect your wallet first, or tell me your address." };
         }
