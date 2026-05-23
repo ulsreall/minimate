@@ -3,7 +3,7 @@ import { isMiniPay, isFarcaster, getAccount, getAllBalances, sendToken, sendNati
 import { sdk } from '@farcaster/miniapp-sdk';
 import './index.css';
 
-const API_URL = '/api/chat';
+const API_URL = 'https://minimate-green.vercel.app/api/chat';
 const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
 const QUICK_ACTIONS = [
