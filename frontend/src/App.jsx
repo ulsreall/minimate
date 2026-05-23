@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { isMiniPay, getAccount, getAllBalances, sendToken, sendNative, waitForTx, onAccountChange } from './lib/celo';
+import { isMiniPay, isFarcaster, getAccount, getAllBalances, sendToken, sendNative, waitForTx, onAccountChange } from './lib/celo';
 import { sdk } from '@farcaster/miniapp-sdk';
 import './index.css';
 
@@ -110,10 +110,11 @@ export default function App() {
     initFarcaster();
   }, []);
 
-  // Auto-connect if MiniPay
+  // Auto-connect if MiniPay or Farcaster
   useEffect(() => {
     async function connect() {
-      if (isMiniPay()) {
+      const inFarcaster = await isFarcaster();
+      if (isMiniPay() || inFarcaster) {
         const addr = await getAccount();
         if (addr) {
           setWallet({ address: addr });

@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, custom, http, formatEther, parseEther, getContract } from 'viem';
 import { celo } from 'viem/chains';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 // Celo Mainnet stablecoin addresses (from MiniPay docs)
 const USDm_ADDRESS = '0x765DE816845861e75A25fCA122bb6898B8B1282a'; // Also cUSD on Celo
@@ -17,9 +18,43 @@ const erc20Abi = [
   { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'string' }] },
 ];
 
+// Cache Farcaster context
+let _isFarcaster = null;
+
+// Detect Farcaster Mini App
+export async function isFarcaster() {
+  if (_isFarcaster !== null) return _isFarcaster;
+  try {
+    _isFarcaster = await sdk.isInMiniApp();
+  } catch {
+    _isFarcaster = false;
+  }
+  return _isFarcaster;
+}
+
 // Detect MiniPay
 export function isMiniPay() {
   return typeof window !== 'undefined' && window.ethereum?.isMiniPay === true;
+}
+
+// Get the best available provider (Farcaster > MiniPay > injected)
+async function getProvider() {
+  // Priority 1: Farcaster wallet
+  if (await isFarcaster()) {
+    try {
+      const provider = await sdk.wallet.getEthereumProvider();
+      if (provider) return provider;
+    } catch (e) {
+      console.warn('[MiniMate] Farcaster provider failed:', e);
+    }
+  }
+
+  // Priority 2: MiniPay / injected
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return window.ethereum;
+  }
+
+  return null;
 }
 
 // Create public client (read-only, no wallet needed)
@@ -30,32 +65,32 @@ export function getPublicClient() {
   });
 }
 
-// Create wallet client (requires MiniPay or injected wallet)
+// Create wallet client (Farcaster > MiniPay > injected)
 export async function getWalletClient() {
-  if (typeof window === 'undefined' || !window.ethereum) {
-    throw new Error('No wallet detected. Please open in MiniPay.');
+  const provider = await getProvider();
+  if (!provider) {
+    throw new Error('No wallet detected. Open in MiniPay or Farcaster.');
   }
-  
+
   return createWalletClient({
     chain: celo,
-    transport: custom(window.ethereum),
+    transport: custom(provider),
   });
 }
 
 // Get connected account address
 export async function getAccount() {
-  if (typeof window === 'undefined' || !window.ethereum) {
-    return null;
-  }
-  
+  const provider = await getProvider();
+  if (!provider) return null;
+
   try {
-    const accounts = await window.ethereum.request({
+    const accounts = await provider.request({
       method: 'eth_requestAccounts',
       params: [],
     });
     return accounts[0] || null;
   } catch (err) {
-    console.error('Failed to get account:', err);
+    console.error('[MiniMate] Failed to get account:', err);
     return null;
   }
 }
@@ -63,16 +98,16 @@ export async function getAccount() {
 // Check balance of any ERC20 token
 export async function getTokenBalance(tokenAddress, userAddress) {
   const publicClient = getPublicClient();
-  
+
   const contract = getContract({
     address: tokenAddress,
     abi: erc20Abi,
     client: publicClient,
   });
-  
+
   const balance = await contract.read.balanceOf([userAddress]);
   const decimals = await contract.read.decimals();
-  
+
   return {
     raw: balance,
     formatted: formatEther(balance), // Most Celo tokens use 18 decimals
@@ -83,14 +118,14 @@ export async function getTokenBalance(tokenAddress, userAddress) {
 // Get all balances for a user
 export async function getAllBalances(address) {
   const publicClient = getPublicClient();
-  
+
   const [nativeBalance, usdm, usdc, usdt] = await Promise.all([
     publicClient.getBalance({ address }),
     getTokenBalance(USDm_ADDRESS, address),
     getTokenBalance(USDC_ADDRESS, address),
     getTokenBalance(USDT_ADDRESS, address),
   ]);
-  
+
   return {
     native: { raw: nativeBalance, formatted: formatEther(nativeBalance) },
     usdm: usdm,
@@ -103,11 +138,11 @@ export async function getAllBalances(address) {
 export async function sendToken(tokenAddress, to, amount) {
   const walletClient = await getWalletClient();
   const account = await getAccount();
-  
+
   if (!account) throw new Error('No account connected');
-  
+
   const amountWei = parseEther(amount);
-  
+
   // Simulate the transaction first
   const { request } = await getPublicClient().simulateContract({
     address: tokenAddress,
@@ -116,10 +151,10 @@ export async function sendToken(tokenAddress, to, amount) {
     args: [to, amountWei],
     account,
   });
-  
-  // Execute the transaction (MiniPay handles fee abstraction automatically)
+
+  // Execute the transaction
   const hash = await walletClient.writeContract(request);
-  
+
   return hash;
 }
 
@@ -127,15 +162,15 @@ export async function sendToken(tokenAddress, to, amount) {
 export async function sendNative(to, amount) {
   const walletClient = await getWalletClient();
   const account = await getAccount();
-  
+
   if (!account) throw new Error('No account connected');
-  
+
   const hash = await walletClient.sendTransaction({
     account,
     to,
     value: parseEther(amount),
   });
-  
+
   return hash;
 }
 
@@ -146,10 +181,10 @@ export async function waitForTx(hash) {
   return receipt;
 }
 
-// Subscribe to account changes (MiniPay)
+// Subscribe to account changes (MiniPay only — Farcaster handles this differently)
 export function onAccountChange(callback) {
   if (typeof window === 'undefined' || !window.ethereum) return;
-  
+
   window.ethereum.on('accountsChanged', (accounts) => {
     callback(accounts[0] || null);
   });
@@ -158,7 +193,7 @@ export function onAccountChange(callback) {
 // Subscribe to chain changes
 export function onChainChange(callback) {
   if (typeof window === 'undefined' || !window.ethereum) return;
-  
+
   window.ethereum.on('chainChanged', (chainId) => {
     callback(chainId);
   });
