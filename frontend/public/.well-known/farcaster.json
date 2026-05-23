@@ -1,0 +1,34 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjU4NDk5NTY3NiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDcyMWU4ODVCRTIzN0VmMTkzODA3ZDdhOTEyQzIwMWN2YTUzZEE1MjIifQ",
+    "payload": "eyJkb21haW4iOiJtaW5pbWF0ZS1ncmVlbi52ZXJjZWwuYXBwIn0",
+    "signature": "MHgxMjM0NTY3ODkw..."
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "MiniMate",
+    "homeUrl": "https://minimate-green.vercel.app",
+    "iconUrl": "https://minimate-green.vercel.app/logo.png",
+    "splashImageUrl": "https://minimate-green.vercel.app/logo.png",
+    "splashBackgroundColor": "#09090B",
+    "subtitle": "AI Finance on Celo",
+    "description": "Your AI-powered financial companion on Celo. Check balances, send payments, create savings goals — all through natural language.",
+    "screenshotUrls": [
+      "https://minimate-green.vercel.app/logo.png"
+    ],
+    "primaryCategory": "finance",
+    "tags": [
+      "celo",
+      "defi",
+      "ai",
+      "minipay",
+      "finance"
+    ],
+    "ogTitle": "MiniMate — AI Finance Assistant on Celo",
+    "ogDescription": "Check balances, send payments, create savings goals with AI on Celo blockchain.",
+    "ogImageUrl": "https://minimate-green.vercel.app/logo.png",
+    "buttonTitle": "🚀 Launch MiniMate",
+    "webhookUrl": "https://minimate-green.vercel.app/api/webhook",
+    "noindex": false
+  }
+}

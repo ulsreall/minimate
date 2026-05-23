@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { isMiniPay, getAccount, getAllBalances, sendToken, sendNative, waitForTx, onAccountChange } from './lib/celo';
+import { sdk } from '@farcaster/miniapp-sdk';
 import './index.css';
 
 const API_URL = '/api/chat';
@@ -92,6 +93,22 @@ export default function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Signal ready to Farcaster Mini App SDK (hides splash screen)
+  useEffect(() => {
+    async function initFarcaster() {
+      try {
+        const isFarcaster = await sdk.isInMiniApp();
+        if (isFarcaster) {
+          await sdk.actions.ready();
+          console.log('[MiniMate] Farcaster Mini App ready');
+        }
+      } catch (e) {
+        // Not in Farcaster context — ignore
+      }
+    }
+    initFarcaster();
+  }, []);
 
   // Auto-connect if MiniPay
   useEffect(() => {
