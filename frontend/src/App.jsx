@@ -254,12 +254,45 @@ export default function App() {
       <div className="messages">
         {showWelcome && messages.length === 0 ? (
           <div className="welcome">
-            <div className="welcome-logo">
-              <img src="/logo.png" alt="MiniMate" />
+            <div className="welcome-hero">
+              <div className="welcome-logo">
+                <img src="/logo.png" alt="MiniMate" />
+              </div>
+              <h2>MiniMate</h2>
+              <p className="welcome-tagline">AI-powered finance on Celo. Chat to manage your crypto.</p>
             </div>
-            <h2>Hey! I'm MiniMate 🤖</h2>
-            <p>Your AI-powered financial assistant on Celo. I can help you check balances, send payments, and manage your finances.</p>
+
+            <div className="feature-grid">
+              <div className="feature-card" onClick={() => sendMessage("What's my balance?")}>
+                <span className="feature-icon">💰</span>
+                <span className="feature-label">Balance</span>
+                <span className="feature-desc">Check all tokens</span>
+              </div>
+              <div className="feature-card" onClick={() => sendMessage("Send a payment")}>
+                <span className="feature-icon">💸</span>
+                <span className="feature-label">Pay</span>
+                <span className="feature-desc">Send via chat</span>
+              </div>
+              <div className="feature-card" onClick={() => sendMessage("Create a savings goal")}>
+                <span className="feature-icon">🎯</span>
+                <span className="feature-label">Save</span>
+                <span className="feature-desc">Goals + auto-save</span>
+              </div>
+              <div className="feature-card" onClick={() => sendMessage("Show my spending")}>
+                <span className="feature-icon">📊</span>
+                <span className="feature-label">Track</span>
+                <span className="feature-desc">Spending breakdown</span>
+              </div>
+            </div>
+
             {balances && <BalanceCards balances={balances} />}
+
+            <div className="welcome-footer">
+              <span className="powered-badge">
+                <span className="powered-dot"></span>
+                Powered by Celo
+              </span>
+            </div>
           </div>
         ) : null}
         
