@@ -209,9 +209,13 @@ export default function App() {
         }
         const newFlow = { ...sendFlow, amount: num, step: 'token' };
         setSendFlow(newFlow);
+        const isMiniPayEnv = env === 'minipay';
+        const tokenPrompt = isMiniPayEnv
+          ? `💰 Amount: **${num}**\n\nWhich token?\n\n• **USDm** — Celo Dollar ⭐\n• **USDC** — USD Coin\n• **USDT** — Tether\n\nType the token name (e.g. "USDm")`
+          : `💰 Amount: **${num}**\n\nWhich token?\n\n• **CELO** — native token\n• **USDm** — Celo Dollar\n• **USDC** — USD Coin\n• **USDT** — Tether\n\nType the token name (e.g. "CELO" or "USDm")`;
         setMessages(prev => [...prev,
           { role: 'user', content: msg },
-          { role: 'assistant', content: `💰 Amount: **${num}**\n\nWhich token?\n\n• **CELO** — native token\n• **USDm** — Celo Dollar\n• **USDC** — USD Coin\n• **USDT** — Tether\n\nType the token name (e.g. "CELO" or "USDm")` }
+          { role: 'assistant', content: tokenPrompt }
         ]);
         setInput('');
         return;
@@ -436,7 +440,7 @@ export default function App() {
             <span className="wallet-dot"></span>
             {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
           </div>
-        ) : (
+        ) : env === 'minipay' ? null : (
           <button className="quick-btn" onClick={handleManualConnect} style={{ marginLeft: 'auto' }}>
             Connect
           </button>

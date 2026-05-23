@@ -215,7 +215,6 @@ const CELO_CHAIN_ID = '0xa4ec'; // 42220 in hex
 
 /**
  * Ensure the wallet is on Celo mainnet. If not, request a switch.
- * Works with MetaMask, Coinbase Wallet, Rabby, etc.
  */
 export async function ensureCeloChain() {
   const provider = await getProvider();
@@ -223,7 +222,7 @@ export async function ensureCeloChain() {
 
   try {
     const currentChainId = await provider.request({ method: 'eth_chainId' });
-    if (currentChainId === CELO_CHAIN_ID) return; // already on Celo
+    if (currentChainId === CELO_CHAIN_ID) return;
 
     console.log('[MiniMate] Switching chain from', currentChainId, 'to Celo...');
     await provider.request({
@@ -231,9 +230,7 @@ export async function ensureCeloChain() {
       params: [{ chainId: CELO_CHAIN_ID }],
     });
   } catch (switchError) {
-    // Error code 4902 = chain not added to wallet
     if (switchError.code === 4902) {
-      console.log('[MiniMate] Adding Celo chain to wallet...');
       await provider.request({
         method: 'wallet_addEthereumChain',
         params: [{
@@ -250,6 +247,18 @@ export async function ensureCeloChain() {
   }
 }
 
+/**
+ * Get the best fee currency for the current environment.
+ * MiniPay supports paying gas in stablecoins (fee abstraction).
+ * Returns the USDm address for MiniPay, or undefined for regular wallets.
+ */
+async function getFeeCurrency() {
+  if (isMiniPay()) {
+    return USDm_ADDRESS; // Pay gas with USDm — no CELO needed
+  }
+  return undefined; // Regular wallets pay gas in CELO
+}
+
 export async function sendToken(tokenAddress, to, amount) {
   await ensureCeloChain();
   const walletClient = await getWalletClient();
@@ -258,6 +267,7 @@ export async function sendToken(tokenAddress, to, amount) {
   if (!account) throw new Error('No account connected');
 
   const amountWei = parseEther(amount);
+  const feeCurrency = await getFeeCurrency();
 
   // Simulate first
   const { request } = await getPublicClient().simulateContract({
@@ -268,8 +278,13 @@ export async function sendToken(tokenAddress, to, amount) {
     account,
   });
 
-  // Execute
-  const hash = await walletClient.writeContract(request);
+  // Execute — add feeCurrency for MiniPay fee abstraction
+  const txParams = {
+    ...request,
+    ...(feeCurrency && { feeCurrency }),
+  };
+
+  const hash = await walletClient.writeContract(txParams);
   return hash;
 }
 
@@ -280,12 +295,17 @@ export async function sendNative(to, amount) {
 
   if (!account) throw new Error('No account connected');
 
-  const hash = await walletClient.sendTransaction({
+  const feeCurrency = await getFeeCurrency();
+
+  // Build tx — legacy format for MiniPay compatibility
+  const txParams = {
     account,
     to,
     value: parseEther(amount),
-  });
+    ...(feeCurrency && { feeCurrency }),
+  };
 
+  const hash = await walletClient.sendTransaction(txParams);
   return hash;
 }
 
