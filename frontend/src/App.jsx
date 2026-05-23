@@ -408,7 +408,7 @@ export default function App() {
       if (errMsg.includes('user rejected') || errMsg.includes('User rejected') || errMsg.includes('denied')) {
         friendly = '🚫 **Transaction cancelled.** You rejected the transaction in your wallet.';
       } else if (errMsg.includes('insufficient') || errMsg.includes('balance') || errMsg.includes('exceeds')) {
-        friendly = '💸 **Insufficient balance.** You don't have enough tokens for this transaction.\n\nTry a smaller amount or check your balance first.';
+        friendly = "💸 **Insufficient balance.** You don't have enough tokens for this transaction.\n\nTry a smaller amount or check your balance first.";
       } else if (errMsg.includes('network') || errMsg.includes('fetch') || errMsg.includes('timeout')) {
         friendly = '🌐 **Network error.** Could not reach Celo network. Please check your connection and try again.';
       } else if (errMsg.includes('chain') || errMsg.includes('switch')) {
