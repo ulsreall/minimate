@@ -78,7 +78,7 @@ function TransactionCard({ tx }) {
   return (
     <div className="tx-card">
       <div className="tx-card-header">
-        <span className="tx-amount">{tx.amount} USDm</span>
+        <span className="tx-amount">{tx.amount} {tx.token?.toUpperCase() === 'CELO' ? 'CELO' : tx.token || 'USDm'}</span>
         <span className="tx-status">{tx.status || 'Confirmed'}</span>
       </div>
       {tx.to && (

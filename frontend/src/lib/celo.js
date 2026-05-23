@@ -211,7 +211,47 @@ export async function getAllBalances(address) {
 
 // ─── Transactions ────────────────────────────────────────────────────
 
+const CELO_CHAIN_ID = '0xa4ec'; // 42220 in hex
+
+/**
+ * Ensure the wallet is on Celo mainnet. If not, request a switch.
+ * Works with MetaMask, Coinbase Wallet, Rabby, etc.
+ */
+export async function ensureCeloChain() {
+  const provider = await getProvider();
+  if (!provider) throw new Error('No wallet detected');
+
+  try {
+    const currentChainId = await provider.request({ method: 'eth_chainId' });
+    if (currentChainId === CELO_CHAIN_ID) return; // already on Celo
+
+    console.log('[MiniMate] Switching chain from', currentChainId, 'to Celo...');
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: CELO_CHAIN_ID }],
+    });
+  } catch (switchError) {
+    // Error code 4902 = chain not added to wallet
+    if (switchError.code === 4902) {
+      console.log('[MiniMate] Adding Celo chain to wallet...');
+      await provider.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: CELO_CHAIN_ID,
+          chainName: 'Celo Mainnet',
+          nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
+          rpcUrls: ['https://forno.celo.org'],
+          blockExplorerUrls: ['https://celoscan.io'],
+        }],
+      });
+    } else {
+      throw switchError;
+    }
+  }
+}
+
 export async function sendToken(tokenAddress, to, amount) {
+  await ensureCeloChain();
   const walletClient = await getWalletClient();
   const account = await getAccount();
 
@@ -234,6 +274,7 @@ export async function sendToken(tokenAddress, to, amount) {
 }
 
 export async function sendNative(to, amount) {
+  await ensureCeloChain();
   const walletClient = await getWalletClient();
   const account = await getAccount();
 
