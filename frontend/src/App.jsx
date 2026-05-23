@@ -15,6 +15,9 @@ import './index.css';
 
 const API_URL = '/api/chat';
 const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
+const USDC = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
+const USDT = '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e';
+const TOKEN_MAP = { usdm: USDm, usdc: USDC, usdt: USDT };
 
 // ─── Savings Goals (localStorage) ──────────────────────────────────
 const GOALS_KEY = 'minimate_goals';
@@ -125,6 +128,7 @@ export default function App() {
   const [balances, setBalances] = useState(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [env, setEnv] = useState(null); // 'farcaster' | 'minipay' | 'browser'
+  const [sendFlow, setSendFlow] = useState(null); // { step, amount, token, to }
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -187,6 +191,96 @@ export default function App() {
 
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
+
+    // ─── Send Flow Interception ─────────────────────────────────
+    if (sendFlow) {
+      const step = sendFlow.step;
+      const msg = text.trim();
+
+      if (step === 'amount') {
+        const num = parseFloat(msg);
+        if (isNaN(num) || num <= 0) {
+          setMessages(prev => [...prev,
+            { role: 'user', content: msg },
+            { role: 'assistant', content: '⚠️ Please enter a valid amount (e.g. 10, 0.5, 100)' }
+          ]);
+          setInput('');
+          return;
+        }
+        const newFlow = { ...sendFlow, amount: num, step: 'token' };
+        setSendFlow(newFlow);
+        setMessages(prev => [...prev,
+          { role: 'user', content: msg },
+          { role: 'assistant', content: `💰 Amount: **${num}**\n\nWhich token?\n\n• **CELO** — native token\n• **USDm** — Celo Dollar\n• **USDC** — USD Coin\n• **USDT** — Tether\n\nType the token name (e.g. "CELO" or "USDm")` }
+        ]);
+        setInput('');
+        return;
+      }
+
+      if (step === 'token') {
+        const token = msg.toUpperCase().replace(/[^A-Z]/g, '');
+        const valid = ['CELO', 'USDM', 'USDm', 'USDC', 'USDT'];
+        const matched = valid.find(v => v.toUpperCase() === token);
+        if (!matched) {
+          setMessages(prev => [...prev,
+            { role: 'user', content: msg },
+            { role: 'assistant', content: '⚠️ Invalid token. Choose: **CELO**, **USDm**, **USDC**, or **USDT**' }
+          ]);
+          setInput('');
+          return;
+        }
+        const displayToken = matched === 'USDM' ? 'USDm' : matched;
+        const newFlow = { ...sendFlow, token: displayToken, step: 'to' };
+        setSendFlow(newFlow);
+        setMessages(prev => [...prev,
+          { role: 'user', content: msg },
+          { role: 'assistant', content: `🪙 Token: **${displayToken}**\n\nNow paste the recipient address:\n\n(e.g. \`0x721e...A522\`)` }
+        ]);
+        setInput('');
+        return;
+      }
+
+      if (step === 'to') {
+        const addr = msg.trim();
+        if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+          setMessages(prev => [...prev,
+            { role: 'user', content: addr },
+            { role: 'assistant', content: '⚠️ Invalid address. Must be `0x` + 40 hex characters.\n\nPlease paste a valid Celo address.' }
+          ]);
+          setInput('');
+          return;
+        }
+        const { amount, token } = sendFlow;
+        setSendFlow(null);
+        setMessages(prev => [...prev,
+          { role: 'user', content: addr },
+          {
+            role: 'assistant',
+            content: `✅ **Confirm Payment**\n\n• Amount: **${amount} ${token}**\n• To: \`${addr.slice(0, 8)}...${addr.slice(-6)}\`\n\nTap below to send:`,
+            action: 'minipay',
+            tx: { to: addr, amount: String(amount), token: token.toLowerCase() === 'celo' ? 'celo' : 'usdm', status: 'Ready' },
+            onPay: () => executePayment({ to: addr, amount: String(amount), token: token.toLowerCase() === 'celo' ? 'celo' : 'usdm' }),
+          }
+        ]);
+        setInput('');
+        return;
+      }
+    }
+
+    // ─── Detect "send" trigger ──────────────────────────────────
+    const lowerText = text.toLowerCase();
+    if (lowerText === 'send' || lowerText === 'kirim' || lowerText === 'bayar' ||
+        lowerText === 'i want to send a payment' || lowerText === 'send a payment' ||
+        lowerText === 'transfer') {
+      setSendFlow({ step: 'amount', amount: null, token: null, to: null });
+      setShowWelcome(false);
+      setMessages(prev => [...prev,
+        { role: 'user', content: text },
+        { role: 'assistant', content: '💸 **Send Payment**\n\nStep 1/3 — How much do you want to send?\n\nType an amount (e.g. `10`, `0.5`, `100`)' }
+      ]);
+      setInput('');
+      return;
+    }
 
     setShowWelcome(false);
     const userMsg = { role: 'user', content: text };
@@ -275,7 +369,8 @@ export default function App() {
       if (tx.token === 'celo') {
         hash = await sendNative(tx.to, tx.amount);
       } else {
-        hash = await sendToken(USDm, tx.to, tx.amount);
+        const tokenAddr = TOKEN_MAP[tx.token] || USDm;
+        hash = await sendToken(tokenAddr, tx.to, tx.amount);
       }
 
       setMessages((prev) => {
