@@ -397,7 +397,7 @@ function generateResponse(userMessage, walletAddress) {
 
   if (msg.includes('help') || msg.includes('bantuan') || msg.includes('what can')) {
     return Promise.resolve({
-      message: "🤖 **What I Can Do**\n\n• 💰 **Check balance** — View your CELO, USDm, USDC, USDT\n• 💸 **Send payments** — Pay anyone on Celo\n• 🎯 **Savings goals** — Set & track goals\n• 📊 **Spending analysis** — See where your money goes\n• 📋 **Transaction history** — View your recent activity\n\nJust ask me in natural language!",
+      message: "🤖 **What I Can Do**\n\n• 💰 **Check balance** — View your CELO, USDm, USDC, USDT\n• 💸 **Send payments** — Pay anyone on Celo\n• 🎯 **Savings goals** — Set & track goals\n• 📊 **Spending analysis** — See where your money goes\n• 📋 **Transaction history** — View your recent activity\n\n**How it works:**\n1. Connect your wallet (MiniPay auto-connects)\n2. Ask me anything in natural language\n3. I'll execute on Celo blockchain\n\nAll transactions are on-chain. Gas fees in USDm (MiniPay) or CELO.",
     });
   }
 
