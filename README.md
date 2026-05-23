@@ -1,5 +1,9 @@
 # 🤖 MiniMate — AI Finance Assistant on Celo
 
+<p align="center">
+  <img src="frontend/public/logo.png" alt="MiniMate Logo" width="200" />
+</p>
+
 > Your AI-powered financial companion built for MiniPay on Celo blockchain.
 
 ## 🚀 Live Demo
