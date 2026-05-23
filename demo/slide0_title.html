@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: #09090B; color: #FAFAFA; width: 390px; height: 844px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.logo-wrap { width: 80px; height: 80px; border-radius: 20px; overflow: hidden; margin-bottom: 20px; }
+.logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+.tagline { font-size: 15px; color: #A1A1AA; margin-bottom: 28px; max-width: 260px; line-height: 1.5; }
+.badges { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; justify-content: center; }
+.badge { background: #1A1A1E; border: 1px solid #27272A; border-radius: 20px; padding: 8px 16px; font-size: 12px; color: #A1A1AA; font-weight: 500; }
+.badge.green { border-color: #35D07F; color: #35D07F; background: rgba(53,208,127,0.08); }
+.url { color: #35D07F; font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="logo-wrap"><img src="https://minimate-green.vercel.app/logo.png" alt="MiniMate"></div>
+<h1>MiniMate</h1>
+<p class="tagline">AI-powered finance assistant on Celo — built for MiniPay</p>
+<div class="badges">
+  <span class="badge green">MiniPay</span>
+  <span class="badge green">Celo</span>
+  <span class="badge">10M+ Users</span>
+  <span class="badge">Fee Abstraction</span>
+</div>
+<p class="url">minimate-green.vercel.app</p>
+</body>
+</html>

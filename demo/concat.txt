@@ -1,0 +1,6 @@
+file 'clips/title.mp4'
+file 'clips/balance.mp4'
+file 'clips/send.mp4'
+file 'clips/goals.mp4'
+file 'clips/confirmed.mp4'
+file 'clips/end.mp4'

@@ -47,9 +47,9 @@ function formatGoals(goals, currentBalance) {
 
 const QUICK_ACTIONS = [
   { icon: '💰', label: 'Balance', sub: 'View tokens', msg: "What's my balance?" },
-  { icon: '📊', label: 'Spending', sub: 'This month', msg: 'Show my spending this month' },
+  { icon: '📋', label: 'History', sub: 'Recent txs', msg: 'Show my recent transactions' },
   { icon: '🎯', label: 'Set Goal', sub: 'Save up', msg: 'I want to create a savings goal' },
-  { icon: '💸', label: 'Send', sub: 'Transfer CELO', msg: 'I want to send a payment' },
+  { icon: '💸', label: 'Send', sub: 'Transfer', msg: 'I want to send a payment' },
 ];
 
 function MessageBubble({ message }) {
@@ -91,6 +91,9 @@ function TransactionCard({ tx }) {
         <div className="tx-detail">
           <a href={`https://celoscan.io/tx/${tx.hash}`} target="_blank" rel="noopener">
             View on Celoscan ↗
+          </a>
+          <a href={`https://celo.blockscout.com/tx/${tx.hash}`} target="_blank" rel="noopener">
+            Blockscout ↗
           </a>
         </div>
       )}
@@ -353,10 +356,19 @@ export default function App() {
       if (data.wallet) setWallet(data.wallet);
     } catch (err) {
       console.error('[MiniMate] Send message error:', err.message, err.stack);
-      const errorMsg = err.message || 'Unknown error';
+      let friendly = '';
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        friendly = '🌐 **Connection issue.** Could not reach MiniMate server. Please check your internet and try again.';
+      } else if (err.message?.includes('500')) {
+        friendly = '⚙️ **Server error.** Something went wrong on our end. Please try again in a moment.';
+      } else if (err.message?.includes('429')) {
+        friendly = '⏳ **Too many requests.** Please wait a moment before trying again.';
+      } else {
+        friendly = `❌ **Something went wrong.** ${err.message?.slice(0, 100) || 'Unknown error'}\n\nPlease try again.`;
+      }
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
-        return [...clean, { role: 'assistant', content: `❌ ${errorMsg}` }];
+        return [...clean, { role: 'assistant', content: friendly }];
       });
     }
 
@@ -379,20 +391,34 @@ export default function App() {
 
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
+        const now = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         return [
           ...clean,
           {
             role: 'assistant',
-            content: `✅ **Payment Sent!**\n\n• Amount: ${tx.amount} ${tx.token || 'USDm'}\n• To: ${tx.to.slice(0, 8)}...\n• TX: ${hash.slice(0, 16)}...`,
-            tx: { ...tx, hash, status: 'Confirmed' },
+            content: `✅ **Payment Sent!**\n\n• Amount: **${tx.amount} ${tx.token || 'USDm'}**\n• To: \`${tx.to}\`\n• Time: ${now}\n• TX: \`${hash}\``,
+            tx: { ...tx, hash, status: 'Confirmed', timestamp: now },
           },
         ];
       });
     } catch (err) {
       console.error('[MiniMate] Payment error:', err);
+      const errMsg = err.message || '';
+      let friendly = '';
+      if (errMsg.includes('user rejected') || errMsg.includes('User rejected') || errMsg.includes('denied')) {
+        friendly = '🚫 **Transaction cancelled.** You rejected the transaction in your wallet.';
+      } else if (errMsg.includes('insufficient') || errMsg.includes('balance') || errMsg.includes('exceeds')) {
+        friendly = '💸 **Insufficient balance.** You don't have enough tokens for this transaction.\n\nTry a smaller amount or check your balance first.';
+      } else if (errMsg.includes('network') || errMsg.includes('fetch') || errMsg.includes('timeout')) {
+        friendly = '🌐 **Network error.** Could not reach Celo network. Please check your connection and try again.';
+      } else if (errMsg.includes('chain') || errMsg.includes('switch')) {
+        friendly = '🔗 **Wrong network.** Please switch to Celo mainnet in your wallet.';
+      } else {
+        friendly = `❌ **Payment failed.** ${errMsg.slice(0, 120)}\n\nPlease try again. If this keeps happening, try refreshing the app.`;
+      }
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
-        return [...clean, { role: 'assistant', content: `❌ Payment failed: ${err.message}` }];
+        return [...clean, { role: 'assistant', content: friendly }];
       });
     }
   };

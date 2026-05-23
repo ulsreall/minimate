@@ -168,12 +168,11 @@ async function executeAction(action, params, walletAddress) {
     switch (action) {
       case 'check_balance': {
         let address = (params.address || walletAddress)?.toLowerCase();
-        // Validate address format (must be 0x + 40 hex chars)
         if (address && !/^0x[0-9a-f]{40}$/.test(address)) {
-          return { message: "⚠️ Invalid wallet address format. Please check your wallet connection." };
+          return { message: "⚠️ **Invalid address.** That doesn't look like a valid Celo wallet address.\n\nMake sure it starts with `0x` and is 42 characters long." };
         }
         if (!address) {
-          return { message: "Please connect your wallet first, or tell me your address." };
+          return { message: "🔗 **No wallet connected.**\n\nTo check your balance:\n• Open this app in MiniPay\n• Or connect a wallet\n• Or paste your address: `0x...`" };
         }
 
         const [nativeBalance, usdmBalance, usdcBalance, usdtBalance] = await Promise.all([
@@ -249,7 +248,7 @@ async function executeAction(action, params, walletAddress) {
 
         const txs = await getTransactionHistory(address, 10);
         if (txs.length === 0) {
-          return { message: "📋 **Recent Transactions**\n\nNo transactions found yet. Your on-chain activity will appear here." };
+          return { message: "📋 **Recent Transactions**\n\nNo transactions yet! Here's what will show up here:\n\n• 💸 Payments you send\n• 💰 Tokens you receive\n• 🔄 DEX swaps\n• 📊 All on-chain activity\n\nTry sending a payment to see your history grow!" };
         }
 
         const txLines = txs.map(tx => {
@@ -277,7 +276,7 @@ async function executeAction(action, params, walletAddress) {
         const analysis = await analyzeSpending(address);
         if (!analysis || analysis.totalTx === 0) {
           return {
-            message: `📊 **Spending Breakdown**\n\nNo outgoing transactions found this month. Your spending will be auto-categorized:\n\n${CATEGORIES.map(c => `${CATEGORY_EMOJI[c]} ${c}`).join(' | ')}`,
+            message: `📊 **Spending Breakdown**\n\nNo spending data this month yet! Once you start transacting, I'll automatically categorize your spending:\n\n${CATEGORIES.map(c => `${CATEGORY_EMOJI[c]} ${c}`).join(' | ')}\n\n💡 **Tip:** Send a payment or swap tokens to see your breakdown.`,
           };
         }
 
@@ -311,7 +310,17 @@ async function executeAction(action, params, walletAddress) {
     }
   } catch (err) {
     console.error('Action error:', err);
-    return { message: `Something went wrong: ${err.message}. Please try again.` };
+    const msg = err.message || '';
+    if (msg.includes('rate limit') || msg.includes('429')) {
+      return { message: "⏳ **Rate limited.** Too many requests to Celo network. Please wait a moment and try again." };
+    }
+    if (msg.includes('timeout') || msg.includes('TIMEOUT')) {
+      return { message: "⏰ **Request timed out.** The Celo network is taking too long to respond. Please try again." };
+    }
+    if (msg.includes('network') || msg.includes('fetch failed')) {
+      return { message: "🌐 **Network error.** Could not reach Celo RPC. Please try again in a moment." };
+    }
+    return { message: `❌ **Something went wrong.** ${msg.slice(0, 100)}\n\nPlease try again.` };
   }
 }
 
@@ -393,7 +402,7 @@ function generateResponse(userMessage, walletAddress) {
   }
 
   return Promise.resolve({
-    message: "I'm here to help with your Celo finances! Try:\n\n• \"Check my balance\"\n• \"Send 10 USDm to 0x...\"\n• \"Create a savings goal for vacation\"\n• \"Show my spending\"\n• \"Show my transactions\"\n\nWhat would you like to do?",
+    message: "Hey! 👋 I'm MiniMate, your AI finance assistant on Celo.\n\nHere's what I can help with:\n\n• 💰 **Balance** — \"What's my balance?\"\n• 💸 **Send** — \"Send 10 USDm to 0x...\"\n• 🎯 **Goals** — \"Save 100 for vacation\"\n• 📊 **Spending** — \"Show my spending\"\n• 📋 **History** — \"Show my transactions\"\n\nJust ask in natural language!",
   });
 }
 
@@ -431,6 +440,11 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('Handler error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      message: "⚙️ **Server error.** Something went wrong on our end. Please try again in a moment.",
+      action: null,
+      tx: null,
+      data: null,
+    });
   }
 }
