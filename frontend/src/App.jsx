@@ -16,6 +16,32 @@ import './index.css';
 const API_URL = '/api/chat';
 const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
+// ─── Savings Goals (localStorage) ──────────────────────────────────
+const GOALS_KEY = 'minimate_goals';
+
+function loadGoals() {
+  try {
+    return JSON.parse(localStorage.getItem(GOALS_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveGoal(goal) {
+  const goals = loadGoals();
+  goals.push({ ...goal, id: Date.now(), saved: 0, createdAt: new Date().toISOString() });
+  localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+  return goals;
+}
+
+function formatGoals(goals, currentBalance) {
+  if (goals.length === 0) return "🎯 **Your Savings Goals**\n\nNo goals yet. Try \"Save 100 for vacation\"!";
+  return goals.map(g => {
+    const pct = g.target > 0 ? Math.min(100, ((g.saved || 0) / g.target * 100)).toFixed(0) : 0;
+    const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+    const remaining = Math.max(0, g.target - (g.saved || 0));
+    return `🎯 **${g.name}**\n   Target: ${g.target} USDm | Saved: ${(g.saved || 0).toFixed(2)} USDm\n   ${bar} ${pct}% | ${remaining.toFixed(2)} to go\n   Deadline: ${g.deadline || 'No deadline'}`;
+  }).join('\n\n');
+}
+
 const QUICK_ACTIONS = [
   { icon: '💰', label: 'Balance', sub: 'View tokens', msg: "What's my balance?" },
   { icon: '📊', label: 'Spending', sub: 'This month', msg: 'Show my spending this month' },
@@ -194,15 +220,33 @@ export default function App() {
       const data = await res.json();
       console.log('[MiniMate] API response OK, action:', data.action);
 
+      // Handle goal actions client-side
+      let responseContent = data.message;
+      let responseAction = data.action;
+
+      if (data.action === 'create_goal' && data.data) {
+        saveGoal({
+          name: data.data.name,
+          target: parseFloat(data.data.target),
+          deadline: data.data.deadline,
+        });
+      }
+
+      if (data.action === 'get_goals') {
+        const goals = loadGoals();
+        responseContent = formatGoals(goals, balances);
+        responseAction = null; // Don't show action button
+      }
+
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
         return [
           ...clean,
           {
             role: 'assistant',
-            content: data.message,
+            content: responseContent,
             tx: data.tx,
-            action: data.action,
+            action: responseAction,
             onPay: data.action === 'minipay' ? () => executePayment(data.tx) : undefined,
           },
         ];
