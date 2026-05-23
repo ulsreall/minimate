@@ -1,0 +1,11 @@
+# Default owner for everything
+*       @ulsreall
+
+# Smart contracts
+/contracts/    @ulsreall
+
+# Frontend
+/frontend/     @ulsreall
+
+# CI/CD and GitHub configs
+/.github/      @ulsreall

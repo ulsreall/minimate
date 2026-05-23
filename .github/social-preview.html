@@ -1,0 +1,147 @@
+# MiniMate — Social Preview Banner
+# Use this HTML to generate a 1280x640 banner for GitHub social preview
+# Open in browser and screenshot, or use a tool like html2image
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 640px;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+  .container {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    z-index: 1;
+  }
+  .left {
+    text-align: center;
+  }
+  .logo {
+    font-size: 80px;
+    margin-bottom: 20px;
+  }
+  .title {
+    font-size: 48px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 12px;
+  }
+  .subtitle {
+    font-size: 22px;
+    color: #8b949e;
+    font-weight: 400;
+  }
+  .badges {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: center;
+  }
+  .badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .badge-celo { background: #FCFF52; color: #000; }
+  .badge-react { background: #61DAFB; color: #000; }
+  .badge-solidity { background: #363636; color: #fff; }
+  .right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.05);
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .feature-icon { font-size: 24px; }
+  .feature-text {
+    color: #e6edf3;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .url {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    color: #58a6ff;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  /* Background decoration */
+  .bg-circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.05;
+  }
+  .bg-circle-1 {
+    width: 400px; height: 400px;
+    background: #FCFF52;
+    top: -100px; right: -100px;
+  }
+  .bg-circle-2 {
+    width: 300px; height: 300px;
+    background: #61DAFB;
+    bottom: -80px; left: -80px;
+  }
+</style>
+</head>
+<body>
+  <div class="bg-circle bg-circle-1"></div>
+  <div class="bg-circle bg-circle-2"></div>
+  
+  <div class="container">
+    <div class="left">
+      <div class="logo">🤖</div>
+      <div class="title">MiniMate</div>
+      <div class="subtitle">AI Finance Assistant on Celo</div>
+      <div class="badges">
+        <span class="badge badge-celo">Celo</span>
+        <span class="badge badge-react">React</span>
+        <span class="badge badge-solidity">Solidity</span>
+      </div>
+    </div>
+    <div class="right">
+      <div class="feature">
+        <span class="feature-icon">💰</span>
+        <span class="feature-text">Check CELO & Stablecoin Balances</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">📊</span>
+        <span class="feature-text">AI-Powered Spending Analysis</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🎯</span>
+        <span class="feature-text">Savings Goals with Auto-Save</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">💸</span>
+        <span class="feature-text">Send Payments via Natural Language</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🤖</span>
+        <span class="feature-text">AI Chat for Financial Insights</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="url">minimate-green.vercel.app</div>
+</body>
+</html>
