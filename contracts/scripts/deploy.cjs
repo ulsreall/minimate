@@ -4,13 +4,14 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying with:", deployer.address);
 
-  // Celo Alfajores testnet cUSD address
-  const CUSD_ALFAJORES = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1";
+  // Celo Mainnet stablecoin addresses
+  const CUSD_MAINNET = "0x765DE816845861e75A25fCA122bb6898B8B1282a";
+  const CUSD = CUSD_MAINNET;
 
   // Deploy MiniMateVault
   console.log("\n1. Deploying MiniMateVault...");
   const Vault = await hre.ethers.getContractFactory("MiniMateVault");
-  const vault = await Vault.deploy(CUSD_ALFAJORES);
+  const vault = await Vault.deploy(CUSD);
   await vault.waitForDeployment();
   const vaultAddr = await vault.getAddress();
   console.log("   MiniMateVault:", vaultAddr);
@@ -18,7 +19,7 @@ async function main() {
   // Deploy MiniMateRouter
   console.log("\n2. Deploying MiniMateRouter...");
   const Router = await hre.ethers.getContractFactory("MiniMateRouter");
-  const router = await Router.deploy(CUSD_ALFAJORES);
+  const router = await Router.deploy(CUSD);
   await router.waitForDeployment();
   const routerAddr = await router.getAddress();
   console.log("   MiniMateRouter:", routerAddr);
@@ -27,17 +28,17 @@ async function main() {
   console.log("\n--- Deployment Summary ---");
   console.log("MiniMateVault:", vaultAddr);
   console.log("MiniMateRouter:", routerAddr);
-  console.log("Network: Alfajores (Celo Testnet)");
-  console.log("cUSD:", CUSD_ALFAJORES);
+  console.log("Network: Celo Mainnet (42220)");
+  console.log("cUSD:", CUSD);
 
   // Save addresses
   const fs = require("fs");
   const addresses = {
-    network: "alfajores",
-    chainId: 44787,
+    network: "celo",
+    chainId: 42220,
     MiniMateVault: vaultAddr,
     MiniMateRouter: routerAddr,
-    cUSD: CUSD_ALFAJORES,
+    cUSD: CUSD,
   };
   fs.writeFileSync(
     "../frontend/src/contracts.json",
