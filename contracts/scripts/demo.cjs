@@ -116,7 +116,7 @@ async function main() {
   await log('STEP 5: Send Payment via Router');
   
   const router = new ethers.Contract(ROUTER, ROUTER_ABI, wallet);
-  const recipient = '0x1F98F5DEB986f37ccCFfCc17977A2D2C41dd63f7'; // Old wallet
+  const recipient = '0xd5F0988574931B55A42002A82A41a5F594eb1f45'; // Main wallet
   const payAmount = ethers.parseEther('0.5'); // 0.5 CELO
   const category = 0; // Food
   const description = 'Coffee and snacks';
