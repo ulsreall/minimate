@@ -6,7 +6,7 @@ const API_URL = '/api/chat';
 const USDm = '0x765DE816845861e75A25fCA122bb6898B8B1282a';
 
 const QUICK_ACTIONS = [
-  { label: '💰 Check balance', msg: 'What\'s my balance?' },
+  { label: '💰 Check balance', msg: "What's my balance?" },
   { label: '📊 Spending summary', msg: 'Show my spending this month' },
   { label: '🎯 Create savings goal', msg: 'I want to create a savings goal' },
   { label: '💸 Send payment', msg: 'I want to send a payment' },
@@ -24,7 +24,7 @@ function MessageBubble({ message }) {
           <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
           {message.tx && <TransactionCard tx={message.tx} />}
           {message.action === 'minipay' && (
-            <button className="minipay-btn" style={{ marginTop: 8 }} onClick={message.onPay}>
+            <button className="minipay-btn" style={{ marginTop: 12 }} onClick={message.onPay}>
               🟡 Pay with MiniPay
             </button>
           )}
@@ -49,7 +49,7 @@ function TransactionCard({ tx }) {
       )}
       {tx.hash && (
         <div className="tx-detail">
-          <a href={`https://celoscan.io/tx/${tx.hash}`} target="_blank" rel="noopener" style={{ color: '#10B981' }}>
+          <a href={`https://celoscan.io/tx/${tx.hash}`} target="_blank" rel="noopener">
             View on Celoscan ↗
           </a>
         </div>
@@ -58,18 +58,35 @@ function TransactionCard({ tx }) {
   );
 }
 
+function BalanceCards({ balances }) {
+  if (!balances) return null;
+  
+  const tokens = [
+    { name: 'CELO', value: balances.native?.formatted },
+    { name: 'USDm', value: balances.usdm?.formatted },
+    { name: 'USDC', value: balances.usdc?.formatted },
+    { name: 'USDT', value: balances.usdt?.formatted },
+  ];
+  
+  return (
+    <div className="balance-grid">
+      {tokens.map(token => (
+        <div key={token.name} className="balance-card">
+          <div className="token">{token.name}</div>
+          <div className="amount">{parseFloat(token.value || 0).toFixed(token.name === 'CELO' ? 4 : 2)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: isMiniPay()
-        ? "Hey! I'm MiniMate, your AI finance assistant on Celo. 🤖\n\nI can help you:\n• Check balances & spending\n• Send payments\n• Create savings goals\n• Analyze your finances\n\nWhat would you like to do?"
-        : "Hey! I'm MiniMate. 👋\n\nFor the best experience, open this app in MiniPay.\n\nYou can still explore in view-only mode. What would you like to do?",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [wallet, setWallet] = useState(null);
+  const [balances, setBalances] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(true);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -83,14 +100,13 @@ export default function App() {
         const addr = await getAccount();
         if (addr) {
           setWallet({ address: addr });
-          const balances = await getAllBalances(addr);
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: `✅ Connected!\n\n💰 **Your Balances:**\n• Native CELO: ${parseFloat(balances.native.formatted).toFixed(4)}\n• USDm: ${parseFloat(balances.usdm.formatted).toFixed(2)}\n• USDC: ${parseFloat(balances.usdc.formatted).toFixed(2)}\n• USDT: ${parseFloat(balances.usdt.formatted).toFixed(2)}`,
-            },
-          ]);
+          const bal = await getAllBalances(addr);
+          setBalances(bal);
+          setShowWelcome(false);
+          setMessages([{
+            role: 'assistant',
+            content: `✅ Connected!\n\nI'm MiniMate, your AI finance assistant on Celo. 🤖\n\nWhat would you like to do?`,
+          }]);
         }
       }
     }
@@ -99,11 +115,14 @@ export default function App() {
 
   // Listen for account changes
   useEffect(() => {
-    onAccountChange((addr) => {
+    onAccountChange(async (addr) => {
       if (addr) {
         setWallet({ address: addr });
+        const bal = await getAllBalances(addr);
+        setBalances(bal);
       } else {
         setWallet(null);
+        setBalances(null);
       }
     });
   }, []);
@@ -111,6 +130,7 @@ export default function App() {
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
 
+    setShowWelcome(false);
     const userMsg = { role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -124,6 +144,7 @@ export default function App() {
         body: JSON.stringify({
           messages: [...messages, userMsg].filter((m) => m.content !== '...'),
           wallet: wallet,
+          balances: balances,
         }),
       });
 
@@ -194,7 +215,9 @@ export default function App() {
   return (
     <div className="chat-container">
       <div className="header">
-        <div className="header-icon">🤖</div>
+        <div className="header-icon">
+          <img src="/logo.png" alt="MiniMate" />
+        </div>
         <div className="header-info">
           <h1>MiniMate</h1>
           <p>AI Finance on Celo {isMiniPay() ? '(MiniPay)' : ''}</p>
@@ -212,6 +235,17 @@ export default function App() {
       </div>
 
       <div className="messages">
+        {showWelcome && messages.length === 0 ? (
+          <div className="welcome">
+            <div className="welcome-logo">
+              <img src="/logo.png" alt="MiniMate" />
+            </div>
+            <h2>Hey! I'm MiniMate 🤖</h2>
+            <p>Your AI-powered financial assistant on Celo. I can help you check balances, send payments, and manage your finances.</p>
+            {balances && <BalanceCards balances={balances} />}
+          </div>
+        ) : null}
+        
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} />
         ))}
@@ -236,7 +270,7 @@ export default function App() {
             disabled={loading}
           />
           <button className="send-btn" type="submit" disabled={loading || !input.trim()}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" />
             </svg>
           </button>
