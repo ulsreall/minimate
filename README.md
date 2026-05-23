@@ -6,7 +6,7 @@
 
 > Your AI-powered financial companion built for MiniPay on Celo blockchain.
 
-## 🚀 Live Demo
+## 🚀 Live 
 
 **[minimate-green.vercel.app](https://minimate-green.vercel.app/)**
 
