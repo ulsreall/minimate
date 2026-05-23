@@ -170,21 +170,29 @@ export default function App() {
     setMessages((prev) => [...prev, { role: 'assistant', content: '...' }]);
 
     try {
+      const payload = {
+        messages: [...messages, userMsg].filter((m) => m.content !== '...'),
+        wallet: wallet,
+      };
+
+      console.log('[MiniMate] Sending to API:', API_URL, 'wallet:', wallet?.address);
+
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].filter((m) => m.content !== '...'),
-          wallet: wallet,
-          balances: balances,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log('[MiniMate] API response status:', res.status);
+
       if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        const errText = await res.text().catch(() => 'unknown');
+        console.error('[MiniMate] API error body:', errText);
+        throw new Error(`API error ${res.status}: ${errText.slice(0, 100)}`);
       }
 
       const data = await res.json();
+      console.log('[MiniMate] API response OK, action:', data.action);
 
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
@@ -202,10 +210,11 @@ export default function App() {
 
       if (data.wallet) setWallet(data.wallet);
     } catch (err) {
-      console.error('[MiniMate] Send message error:', err);
+      console.error('[MiniMate] Send message error:', err.message, err.stack);
+      const errorMsg = err.message || 'Unknown error';
       setMessages((prev) => {
         const clean = prev.filter((m) => m.content !== '...');
-        return [...clean, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }];
+        return [...clean, { role: 'assistant', content: `❌ ${errorMsg}` }];
       });
     }
 
